@@ -1,0 +1,11 @@
+# course material is not redistributed
+*.zip
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+# secrets - never commit these
+*.pem
+*.key
+.env

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Load Balanced Architecture with Advanced Request Routing | AWS project documentation</title>
+<meta name="description" content="Step-by-step documentation for an AWS project using an Application Load Balancer with path-based and host-based routing, EC2, S3 and IAM.">
+<meta name="author" content="Rutuja Naik">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f7f9; --card:#ffffff; --ink:#15181e; --muted:#566070; --line:#d9dee6;
+  --red:#c8302a; --red-soft:#fdeceb; --blue:#1d57c7; --blue-soft:#e9f0fd;
+  --code-bg:#14171d; --code-ink:#e6e9ef; --note:#fff7e0; --note-line:#c98a00; --ok:#e7f6ee; --ok-line:#1b8a52;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --serif:"IBM Plex Serif",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1217; --card:#171b22; --ink:#e8ebf0; --muted:#9aa5b5; --line:#2a313c;
+    --red:#ff6a5f; --red-soft:#2b1816; --blue:#6ea0ff; --blue-soft:#14203a;
+    --code-bg:#0a0c10; --note:#2a2412; --note-line:#e0a63a; --ok:#10261b; --ok-line:#47c887;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1217; --card:#171b22; --ink:#e8ebf0; --muted:#9aa5b5; --line:#2a313c;
+  --red:#ff6a5f; --red-soft:#2b1816; --blue:#6ea0ff; --blue-soft:#14203a;
+  --code-bg:#0a0c10; --note:#2a2412; --note-line:#e0a63a; --ok:#10261b; --ok-line:#47c887;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:1.65}
+a{color:var(--blue)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline-offset:2px;border-radius:3px}
+code{font-family:var(--mono);font-size:.88em;background:var(--blue-soft);padding:.1em .35em;border-radius:4px}
+pre{background:var(--code-bg);color:var(--code-ink);padding:16px 18px;border-radius:8px;overflow-x:auto;font-family:var(--mono);font-size:.85rem;line-height:1.55;margin:14px 0}
+pre code{background:none;padding:0;color:inherit;font-size:inherit}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1fr 1fr;min-height:300px}
+.hero .side{padding:40px clamp(20px,4vw,56px);display:flex;flex-direction:column;justify-content:flex-end;color:#fff}
+.hero .red{background:#c8302a}.hero .blue{background:#1d57c7}
+.hero .path{font-family:var(--mono);font-size:clamp(1.6rem,4vw,2.8rem);font-weight:500;margin:0}
+.hero .to{margin:6px 0 0;font-size:.95rem;opacity:.92}
+.titlebar{background:var(--card);border-bottom:1px solid var(--line);padding:28px clamp(20px,4vw,56px)}
+.titlebar h1{font-family:var(--serif);font-weight:600;font-size:clamp(1.7rem,3.6vw,2.6rem);line-height:1.15;margin:0 0 8px;max-width:30ch}
+.titlebar p{margin:0;color:var(--muted);max-width:68ch}
+.titlebar .by{margin-top:10px;font-size:.92rem}
+.theme{float:right;background:none;border:1px solid var(--line);color:var(--ink);border-radius:6px;padding:6px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+
+/* layout */
+.wrap{display:grid;grid-template-columns:250px minmax(0,1fr);gap:0;max-width:1240px;margin:0 auto}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:28px 20px 28px clamp(16px,3vw,32px);border-right:1px solid var(--line);font-size:.92rem}
+nav.toc ol{list-style:none;margin:0;padding:0}
+nav.toc li{margin:2px 0}
+nav.toc a{display:block;padding:5px 10px;color:var(--muted);text-decoration:none;border-left:3px solid transparent;border-radius:0 4px 4px 0}
+nav.toc a:hover{color:var(--ink);background:var(--blue-soft)}
+nav.toc a.active{color:var(--ink);border-left-color:var(--blue);background:var(--blue-soft);font-weight:500}
+nav.toc .sub a{padding-left:24px;font-size:.86rem}
+main{padding:12px clamp(18px,4vw,56px) 80px;min-width:0}
+section{padding-top:36px}
+h2{font-family:var(--serif);font-size:1.7rem;line-height:1.25;margin:0 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:1.15rem;margin:26px 0 8px}
+h4{font-size:1rem;margin:18px 0 4px}
+p{margin:0 0 12px;max-width:78ch}
+ul,ol.steps{padding-left:22px;margin:0 0 14px;max-width:78ch}
+li{margin:4px 0}
+ol.steps{counter-reset:s;list-style:none;padding-left:0}
+ol.steps>li{counter-increment:s;position:relative;padding-left:38px;margin:10px 0}
+ol.steps>li::before{content:counter(s);position:absolute;left:0;top:1px;width:26px;height:26px;border-radius:50%;background:var(--ink);color:var(--paper);font-size:.8rem;font-weight:600;display:grid;place-items:center}
+figure{margin:18px 0}
+figure img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;background:#fff;display:block}
+figcaption{font-size:.86rem;color:var(--muted);margin-top:6px}
+.scroll{overflow-x:auto;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:.92rem;background:var(--card)}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--ink);color:var(--paper);font-weight:600}
+.callout{border-left:4px solid var(--note-line);background:var(--note);padding:10px 14px;border-radius:0 6px 6px 0;margin:14px 0;max-width:78ch}
+.callout.ok{border-color:var(--ok-line);background:var(--ok)}
+.callout strong:first-child{display:block;margin-bottom:2px}
+.tag{display:inline-block;font-family:var(--mono);font-size:.8rem;padding:1px 8px;border-radius:99px;color:#fff;vertical-align:1px}
+.tag.red{background:var(--red)}.tag.blue{background:var(--blue)}
+.phase{display:flex;align-items:baseline;gap:12px}
+.phase .n{font-family:var(--mono);color:var(--muted);font-size:.95rem;white-space:nowrap}
+details{border:1px solid var(--line);border-radius:8px;background:var(--card);margin:10px 0}
+summary{cursor:pointer;padding:10px 14px;font-weight:500}
+details>div{padding:0 14px 8px}
+footer{border-top:1px solid var(--line);padding:24px clamp(18px,4vw,56px);color:var(--muted);font-size:.9rem;text-align:center}
+.skip{position:absolute;left:-999px}.skip:focus{left:8px;top:8px;background:var(--card);padding:8px 12px;z-index:10}
+
+@media (max-width:860px){
+  .wrap{grid-template-columns:1fr}
+  nav.toc{position:static;max-height:none;border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  nav.toc ol{display:flex;flex-wrap:wrap;gap:4px}
+  nav.toc .sub{display:none}
+  nav.toc a{border:1px solid var(--line);border-radius:99px;padding:4px 12px}
+  .hero{grid-template-columns:1fr;min-height:0}
+  .hero .side{padding-top:22px;padding-bottom:22px}
+}
+@media print{nav.toc,.theme,.hero{display:none}.wrap{display:block}pre{white-space:pre-wrap}}
+</style>
+</head>
+<body>
+<a class="skip" href="#overview">Skip to content</a>
+
+<header>
+  <div class="hero" aria-hidden="true">
+    <div class="side red"><p class="path">/red*</p><p class="to">forwarded to the Red target group</p></div>
+    <div class="side blue"><p class="path">/blue*</p><p class="to">forwarded to the Blue target group</p></div>
+  </div>
+  <div class="titlebar">
+    <button class="theme" id="theme" type="button" aria-label="Toggle light and dark theme">Theme</button>
+    <h1>Load balanced architecture with advanced request routing</h1>
+    <p>One Application Load Balancer, two EC2 web servers, and routing rules that send each request to the right place by URL path or host header.</p>
+    <p class="by">Documentation by Rutuja Naik. Based on the Digital Cloud Training lab.</p>
+  </div>
+</header>
+
+<div class="wrap">
+<nav class="toc" aria-label="Table of contents">
+<ol>
+  <li><a href="#overview">Overview</a></li>
+  <li><a href="#architecture">Architecture</a></li>
+  <li><a href="#resources">Resources</a></li>
+  <li><a href="#prereq">Prerequisites</a></li>
+  <li><a href="#deploy">Deployment steps</a></li>
+  <li class="sub"><a href="#p1">1. S3 bucket</a></li>
+  <li class="sub"><a href="#p2">2. Security group and IAM</a></li>
+  <li class="sub"><a href="#p3">3. EC2 instances</a></li>
+  <li class="sub"><a href="#p4">4. Target groups</a></li>
+  <li class="sub"><a href="#p5">5. Load balancer</a></li>
+  <li class="sub"><a href="#p6">6. Path-based rules</a></li>
+  <li class="sub"><a href="#p7">7. Host-based rules</a></li>
+  <li><a href="#verify">Verification</a></li>
+  <li><a href="#troubleshoot">Troubleshooting</a></li>
+  <li><a href="#cleanup">Clean up</a></li>
+  <li><a href="#security">Security notes</a></li>
+  <li><a href="#learned">What I learned</a></li>
+  <li><a href="#credits">Credits</a></li>
+</ol>
+</nav>
+
+<main>
+<section id="overview">
+  <h2>Overview</h2>
+  <p>This project hosts a small website on Amazon EC2 behind an <strong>Application Load Balancer (ALB)</strong>. Two servers, <span class="tag red">Red</span> and <span class="tag blue">Blue</span>, serve different pages. The ALB reads each request and forwards it to the correct target group.</p>
+  <p><strong>Path-based routing</strong> (also called URL-based routing) uses the URL path, such as <code>/red</code> or <code>/blue</code>. <strong>Host-based routing</strong> uses the <code>Host</code> header, so one load balancer can serve several domains or subdomains.</p>
+  <h3>Goals</h3>
+  <ul>
+    <li>Store the website files in S3 and pull them onto each server at boot with user data.</li>
+    <li>Give EC2 read access to S3 through an IAM role, with no access keys.</li>
+    <li>Run two servers in two Availability Zones.</li>
+    <li>Create target groups with custom health checks.</li>
+    <li>Route traffic with path-based rules, then optionally with host-based rules.</li>
+  </ul>
+</section>
+
+<section id="architecture">
+  <h2>Architecture</h2>
+  <figure><img src="images/architecture-overview.png" alt="Solution architecture: a user reaches the Application Load Balancer, which forwards /red* to the Red instance in us-east-1a and /blue* to the Blue instance in us-east-1b. An S3 bucket and an IAM role support the instances." width="1745" height="964"><figcaption>Solution overview.</figcaption></figure>
+
+  <h3>How a request flows</h3>
+  <ol class="steps">
+    <li>The user opens <code>http://&lt;ALB-DNS-name&gt;/red</code> in a browser.</li>
+    <li>The request reaches the ALB listener on HTTP port 80.</li>
+    <li>The ALB checks listener rules from the lowest priority number to the highest.</li>
+    <li>The matching rule forwards the request to a target group.</li>
+    <li>The ALB sends the request to a healthy instance in that group, and Apache returns the page.</li>
+  </ol>
+
+  <h3>Path-based routing</h3>
+  <figure><img src="images/path-based-routing.png" alt="Diagram of path-based routing: /red goes to the Red target group and /blue goes to the Blue target group across two Availability Zones." width="1203" height="674"><figcaption>Path-based routing. Diagram from the Digital Cloud Training lab guide.</figcaption></figure>
+
+  <h3>Host-based routing</h3>
+  <figure><img src="images/host-based-routing.png" alt="Diagram of host-based routing: red and blue subdomains are routed to the Red and Blue target groups." width="981" height="551"><figcaption>Host-based routing. Diagram from the Digital Cloud Training lab guide.</figcaption></figure>
+
+  <h3>Path-based compared with host-based</h3>
+  <div class="scroll"><table>
+    <thead><tr><th></th><th>Path-based</th><th>Host-based</th></tr></thead>
+    <tbody>
+      <tr><td>Routing key</td><td>URL path (<code>/red*</code>, <code>/blue*</code>)</td><td><code>Host</code> header (<code>red.&lt;domain&gt;</code>, <code>blue.&lt;domain&gt;</code>)</td></tr>
+      <tr><td>Rule condition</td><td>Path</td><td>HTTP host header</td></tr>
+      <tr><td>Good for</td><td>Sections of one site</td><td>Separate sites or subdomains</td></tr>
+      <tr><td>Extra hostnames needed</td><td>No</td><td>Yes</td></tr>
+      <tr><td>Priorities</td><td>Red 1, Blue 2</td><td>Red 1, Blue 2</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="resources">
+  <h2>Resources</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Resource</th><th>Name</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>S3 bucket</td><td><code>arr-bucket-xxxxxx</code></td><td>Stores the web pages and assets</td></tr>
+      <tr><td>Security group</td><td><code>WebsiteSG</code></td><td>Allows inbound HTTP (TCP 80) from 0.0.0.0/0</td></tr>
+      <tr><td>IAM policy</td><td><code>S3-ARR-Policy</code></td><td>Read access to the bucket</td></tr>
+      <tr><td>IAM role</td><td><code>S3-ARR-Role</code></td><td>Instance profile for both EC2 instances</td></tr>
+      <tr><td>EC2 instance</td><td><code>Red</code> (us-east-1a)</td><td>Apache server for <code>/red</code></td></tr>
+      <tr><td>EC2 instance</td><td><code>Blue</code> (us-east-1b)</td><td>Apache server for <code>/blue</code></td></tr>
+      <tr><td>Target groups</td><td><code>Red</code>, <code>Blue</code></td><td>Health checks on <code>/red/index.html</code> and <code>/blue/index.html</code></td></tr>
+      <tr><td>Load balancer</td><td><code>LabLoadBalancer</code></td><td>Internet-facing ALB, listener HTTP:80</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section id="prereq">
+  <h2>Prerequisites</h2>
+  <ul>
+    <li>An AWS account. The Free Tier covers EC2 and S3 for a short lab, but check current ALB pricing before you start.</li>
+    <li>Basic familiarity with the AWS Management Console.</li>
+    <li>The lab file <code>advanced-request-routing-code.zip</code> (web pages, user data scripts and <code>bucket-permissions.json</code>). It is course material and is not included in this repository.</li>
+  </ul>
+</section>
+
+<section id="deploy">
+  <h2>Deployment steps</h2>
+  <p>Work in region <strong>us-east-1</strong>. Follow the phases in order.</p>
+
+  <h3 id="p1" class="phase"><span class="n">Phase 1</span> Create the S3 bucket and upload the code</h3>
+  <ol class="steps">
+    <li>Open the <strong>S3 console</strong> and click <strong>Create bucket</strong>.</li>
+    <li>Enter a globally unique name such as <code>arr-bucket-123456</code>. Write it down.</li>
+    <li>Click <strong>Create bucket</strong>.</li>
+    <li>Extract <code>advanced-request-routing-code.zip</code>.</li>
+    <li>Upload all files <strong>except</strong> the user data files and <code>bucket-permissions.json</code>.</li>
+  </ol>
+
+  <h3 id="p2" class="phase"><span class="n">Phase 2</span> Create the security group and IAM role</h3>
+  <h4>Security group <code>WebsiteSG</code></h4>
+  <ol class="steps">
+    <li>In the <strong>EC2 console</strong>, open <strong>Network &amp; Security &gt; Security Groups</strong> and click <strong>Create security group</strong>.</li>
+    <li>Name and description: <code>WebsiteSG</code>.</li>
+    <li>Add one inbound rule: <strong>HTTP</strong>, TCP, port <strong>80</strong>, source <strong>Anywhere-IPv4 (0.0.0.0/0)</strong>.</li>
+    <li>Click <strong>Create security group</strong>.</li>
+  </ol>
+  <figure><img src="images/security-group-rule.png" alt="Security group inbound rule: HTTP, TCP, port 80, source 0.0.0.0/0." width="1247" height="166"><figcaption>The WebsiteSG inbound rule.</figcaption></figure>
+
+  <h4>IAM policy and role</h4>
+  <ol class="steps">
+    <li>In the <strong>IAM console</strong>, open <strong>Policies &gt; Create policy</strong> and choose the <strong>JSON</strong> tab.</li>
+    <li>Paste <code>bucket-permissions.json</code> (or the example in <code>policies/</code>) and replace <code>YOUR-BUCKET-ARN</code> with your bucket ARN.</li>
+    <li>Name the policy <code>S3-ARR-Policy</code> and create it.</li>
+    <li>Open <strong>Roles &gt; Create role</strong>, choose <strong>EC2</strong> as the trusted entity and click <strong>Next</strong>.</li>
+    <li>Attach <code>S3-ARR-Policy</code>, name the role <code>S3-ARR-Role</code> and create it.</li>
+  </ol>
+  <p>Example policy (least privilege, read-only on one bucket):</p>
+<pre><code>{
+  "Version": "2012-10-17",
+  "Statement": [
+    { "Sid": "AllowReadWebsiteFiles", "Effect": "Allow",
+      "Action": ["s3:GetObject"],  "Resource": "YOUR-BUCKET-ARN/*" },
+    { "Sid": "AllowListBucket", "Effect": "Allow",
+      "Action": ["s3:ListBucket"], "Resource": "YOUR-BUCKET-ARN" }
+  ]
+}</code></pre>
+
+  <h3 id="p3" class="phase"><span class="n">Phase 3</span> Launch the Red and Blue EC2 instances</h3>
+  <h4>Red instance</h4>
+  <ol class="steps">
+    <li>In the <strong>EC2 console</strong>, click <strong>Launch instance</strong>.</li>
+    <li>Name it <code>Red</code>, choose an Amazon Linux AMI and instance type <strong>t2.micro</strong>.</li>
+    <li>Key pair: <strong>Proceed without a key pair</strong>.</li>
+    <li>Network settings: choose <code>WebsiteSG</code> and the subnet in <strong>us-east-1a</strong>.</li>
+    <li>Under <strong>Advanced details</strong>, set <strong>IAM instance profile</strong> to <code>S3-ARR-Role</code>.</li>
+    <li>Paste the Red user data script into <strong>User data</strong>, with <code>YOUR-BUCKET-NAME</code> replaced by your bucket name.</li>
+    <li>Click <strong>Launch instance</strong>.</li>
+  </ol>
+  <p>The Red user data script installs Apache, starts it, and copies the page files from S3:</p>
+<pre><code>#!/bin/bash
+yum update -y
+yum install -y httpd
+systemctl start httpd
+systemctl enable httpd
+mkdir /var/www/html/red
+
+# populate /red
+cd /var/www/html/red
+aws s3 cp s3://YOUR-BUCKET-NAME/hw-red.css ./
+aws s3 cp s3://YOUR-BUCKET-NAME/hw-red-py.css ./
+aws s3 cp s3://YOUR-BUCKET-NAME/python.png ./
+aws s3 cp s3://YOUR-BUCKET-NAME/apache.svg ./
+aws s3 cp s3://YOUR-BUCKET-NAME/red-index.html ./index.html
+
+# populate the web root (replaces the Apache default page)
+cd /var/www/html
+aws s3 cp s3://YOUR-BUCKET-NAME/hw-red.css ./
+aws s3 cp s3://YOUR-BUCKET-NAME/hw-red-py.css ./
+aws s3 cp s3://YOUR-BUCKET-NAME/python.png ./
+aws s3 cp s3://YOUR-BUCKET-NAME/apache.svg ./
+aws s3 cp s3://YOUR-BUCKET-NAME/red-root-index.html ./index.html
+systemctl restart httpd</code></pre>
+  <figure><img src="images/user-data-red.png" alt="The Red user data script as entered in the EC2 launch wizard." width="1046" height="631"><figcaption>Red user data as entered in the launch wizard.</figcaption></figure>
+  <h4>Blue instance</h4>
+  <p>Repeat the steps with these changes: name it <code>Blue</code>, use the subnet in <strong>us-east-1b</strong>, and use the <code>user-data-blue</code> script from the lab zip (bucket name replaced). Keep the same <code>WebsiteSG</code> and <code>S3-ARR-Role</code>.</p>
+  <div class="callout ok"><strong>Check</strong>Open each instance's public IP with <code>/red</code> or <code>/blue</code> added. The matching page should load.</div>
+
+  <h3 id="p4" class="phase"><span class="n">Phase 4</span> Create the target groups</h3>
+  <div class="scroll"><table>
+    <thead><tr><th>Setting</th><th>Red</th><th>Blue</th></tr></thead>
+    <tbody>
+      <tr><td>Target type</td><td>Instances</td><td>Instances</td></tr>
+      <tr><td>Name</td><td><code>Red</code></td><td><code>Blue</code></td></tr>
+      <tr><td>Port</td><td>80</td><td>80</td></tr>
+      <tr><td>Health check path</td><td><code>/red/index.html</code></td><td><code>/blue/index.html</code></td></tr>
+      <tr><td>Instance to register</td><td>Red</td><td>Blue</td></tr>
+    </tbody>
+  </table></div>
+  <p>For each group: open <strong>Load Balancing &gt; Target Groups &gt; Create target group</strong>, apply the settings, click <strong>Next</strong>, select the instance, click <strong>Include as pending below</strong>, then create the group.</p>
+  <figure><img src="images/target-groups.png" alt="The Red and Blue target groups listed with protocol HTTP, port 80 and target type Instance." width="1203" height="213"><figcaption>Both target groups created.</figcaption></figure>
+
+  <h3 id="p5" class="phase"><span class="n">Phase 5</span> Create the Application Load Balancer</h3>
+  <ol class="steps">
+    <li>In the EC2 console sidebar, open <strong>Load Balancers &gt; Create load balancer</strong> and choose <strong>Application Load Balancer</strong>.</li>
+    <li>Name it <code>LabLoadBalancer</code> and keep the scheme <strong>Internet-facing</strong>.</li>
+    <li>Network mapping: select <strong>us-east-1a</strong> and <strong>us-east-1b</strong>.</li>
+    <li>Security group: <code>WebsiteSG</code>.</li>
+    <li>Listener: <strong>HTTP : 80</strong>, default action <strong>Forward to</strong> the <code>Blue</code> target group.</li>
+    <li>Click <strong>Create load balancer</strong> and wait until the state changes from Provisioning to Active.</li>
+  </ol>
+  <figure><img src="images/listener-default-action.png" alt="Listener HTTP port 80 with default action forwarding to the Blue target group." width="1177" height="402"><figcaption>Listener with the default action set to Blue.</figcaption></figure>
+
+  <h3 id="p6" class="phase"><span class="n">Phase 6</span> Configure path-based routing rules</h3>
+  <ol class="steps">
+    <li>Open the load balancer and go to <strong>Listeners and rules</strong>.</li>
+    <li>Tick the <strong>HTTP:80</strong> listener, then choose <strong>Manage rules &gt; Add rule</strong>.</li>
+  </ol>
+  <figure><img src="images/manage-rules-menu.png" alt="The Manage rules menu on the HTTP:80 listener with Add rule highlighted." width="1617" height="347"><figcaption>Manage rules menu.</figcaption></figure>
+  <h4>Red rule</h4>
+  <ol class="steps">
+    <li>Skip name and tags and click <strong>Next</strong>.</li>
+    <li>Condition: <strong>Path</strong>, value <code>/red*</code>.</li>
+    <li>Action: <strong>Forward to target groups</strong>, select <code>Red</code>.</li>
+    <li>Priority: <strong>1</strong>. Save.</li>
+  </ol>
+  <figure><img src="images/rule-action-red.png" alt="Rule action: forward to target group Red with weight 1." width="797" height="431"><figcaption>Action for the Red rule.</figcaption></figure>
+  <h4>Blue rule</h4>
+  <ol class="steps">
+    <li>Condition: <strong>Path</strong>, value <code>/blue*</code>.</li>
+    <li>Action: <strong>Forward to target groups</strong>, select <code>Blue</code>.</li>
+    <li>Priority: <strong>2</strong>. Save.</li>
+  </ol>
+  <p>The listener should now show three rules. Anything that matches neither path goes to Blue through the default action.</p>
+  <figure><img src="images/path-based-rules.png" alt="Listener rules: priority 1 path /red* to Red, priority 2 path /blue* to Blue, default to Blue." width="993" height="416"><figcaption>Path-based listener rules.</figcaption></figure>
+  <div class="callout ok"><strong>Test</strong>Copy the ALB DNS name and open <code>http://&lt;ALB-DNS-name&gt;/red</code> and <code>http://&lt;ALB-DNS-name&gt;/blue</code>. Each should show its own coloured page.</div>
+
+  <h3 id="p7" class="phase"><span class="n">Phase 7</span> Configure host-based routing (optional)</h3>
+  <p>Use this phase to switch from path-based to host-based rules. Only the listener rules change.</p>
+  <ol class="steps">
+    <li>Open the listener and choose <strong>Manage rules &gt; Edit rules</strong>. Delete the two path rules.</li>
+    <li>Add a rule: condition <strong>HTTP host header</strong> = <code>red.yourdomainname.com</code>, forward to <code>Red</code>, priority <strong>1</strong>.</li>
+    <li>Add a rule: condition <strong>HTTP host header</strong> = <code>blue.yourdomainname.com</code>, forward to <code>Blue</code>, priority <strong>2</strong>.</li>
+  </ol>
+  <figure><img src="images/host-based-rules.png" alt="Listener rules for host header matching: red host to Red, blue host to Blue, default to Blue." width="991" height="413"><figcaption>Host header rules. The screenshot uses example hostnames from the original lab; use your own domain.</figcaption></figure>
+  <p>The rules match on the <code>Host</code> header only, so you can test them by sending the header yourself:</p>
+<pre><code>curl -H "Host: red.yourdomainname.com"  http://&lt;ALB-DNS-name&gt;/
+curl -H "Host: blue.yourdomainname.com" http://&lt;ALB-DNS-name&gt;/</code></pre>
+  <div class="callout"><strong>Note</strong>For browsers to reach those hostnames, each name must resolve to the load balancer. DNS setup is outside the scope of this documentation.</div>
+</section>
+
+<section id="verify">
+  <h2>Verification</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Check</th><th>Expected result</th></tr></thead>
+    <tbody>
+      <tr><td>S3 bucket</td><td>Web files uploaded (user data files and <code>bucket-permissions.json</code> excluded)</td></tr>
+      <tr><td>EC2 instances</td><td>Red in us-east-1a and Blue in us-east-1b are running with <code>S3-ARR-Role</code></td></tr>
+      <tr><td>Target groups</td><td>Both targets show <strong>healthy</strong></td></tr>
+      <tr><td>ALB</td><td>State is Active; listener HTTP:80 with default action to Blue</td></tr>
+      <tr><td><code>/red</code></td><td>Red page</td></tr>
+      <tr><td><code>/blue</code></td><td>Blue page</td></tr>
+      <tr><td><code>/</code></td><td>Blue page (default action)</td></tr>
+    </tbody>
+  </table></div>
+<pre><code>curl -I http://&lt;ALB-DNS-name&gt;/red
+curl -I http://&lt;ALB-DNS-name&gt;/blue</code></pre>
+</section>
+
+<section id="troubleshoot">
+  <h2>Troubleshooting</h2>
+  <details><summary>A target is unhealthy</summary><div>
+    <ul>
+      <li>Check the health check path: <code>/red/index.html</code> for Red, <code>/blue/index.html</code> for Blue.</li>
+      <li>On the instance, run <code>systemctl status httpd</code>.</li>
+      <li>Confirm the files exist: <code>ls /var/www/html/red</code>.</li>
+      <li>Confirm <code>WebsiteSG</code> allows HTTP 80.</li>
+      <li>New targets can take a minute or two to pass the check.</li>
+    </ul></div></details>
+  <details><summary>The ALB returns 502 or 503</summary><div>
+    <p>A 503 usually means the target group has no healthy targets. Fix the health problem first. A 502 means the target closed the connection or sent an invalid response; check that Apache is running.</p></div></details>
+  <details><summary>The instance shows the default Apache page</summary><div>
+    <p>The files were not copied from S3. Check that:</p>
+    <ul>
+      <li><code>YOUR-BUCKET-NAME</code> was replaced and spelled correctly.</li>
+      <li>The <code>S3-ARR-Role</code> instance profile is attached.</li>
+      <li>The policy has the correct bucket ARN.</li>
+      <li>The file names in the script exist in the bucket.</li>
+    </ul>
+    <p>Read the boot log on the instance:</p>
+<pre><code>sudo tail -50 /var/log/cloud-init-output.log
+aws s3 ls s3://&lt;your-bucket-name&gt;/</code></pre></div></details>
+  <details><summary>The connection times out</summary><div>
+    <p>Check that the security group allows inbound TCP 80 and that you are using <code>http://</code>. The lab has no HTTPS listener.</p></div></details>
+  <details><summary>Path rules do not match</summary><div>
+    <p>Use <code>/red*</code> and <code>/blue*</code> with the asterisk, keep priorities unique, and remember that unmatched requests go to Blue through the default action, so a wrong path can still show the Blue page.</p></div></details>
+  <details><summary>Host rules do not match</summary><div>
+    <p>The host header must equal the rule value exactly. Test with <code>curl -H "Host: ..."</code>. If you delete the path rules and add no host rules, everything goes to the default (Blue).</p></div></details>
+</section>
+
+<section id="cleanup">
+  <h2>Clean up</h2>
+  <p>The load balancer, EC2 instances and S3 bucket can incur charges. Delete in this order to avoid dependency errors:</p>
+  <ol class="steps">
+    <li>Load balancer <code>LabLoadBalancer</code></li>
+    <li>Target groups <code>Red</code> and <code>Blue</code></li>
+    <li>EC2 instances <code>Red</code> and <code>Blue</code> (terminate)</li>
+    <li>Security group <code>WebsiteSG</code></li>
+    <li>S3 bucket (empty it, then delete it)</li>
+    <li>Optional: IAM role <code>S3-ARR-Role</code> and policy <code>S3-ARR-Policy</code></li>
+  </ol>
+</section>
+
+<section id="security">
+  <h2>Security notes</h2>
+  <ul>
+    <li><code>WebsiteSG</code> is open to the internet on port 80 because this is a public demo. Do not reuse that rule for private workloads.</li>
+    <li>The instances use an IAM role, so no access keys are stored on them.</li>
+    <li>The policy allows only reading one bucket.</li>
+    <li>The listener uses plain HTTP. For production, add an HTTPS listener with an ACM certificate and redirect HTTP to HTTPS.</li>
+    <li>Give instances a separate security group that accepts traffic only from the ALB, and place them in private subnets.</li>
+  </ul>
+</section>
+
+<section id="learned">
+  <h2>What I learned</h2>
+  <ul>
+    <li>One ALB can front several applications by routing on path or host header.</li>
+    <li>Listener rules run in priority order, and the default action catches everything else.</li>
+    <li>A health check path must exist on the instance or the target stays unhealthy.</li>
+    <li>IAM roles are the safe way to let EC2 read from S3.</li>
+    <li>Using two Availability Zones improves availability.</li>
+  </ul>
+</section>
+
+<section id="credits">
+  <h2>Credits</h2>
+  <p>The lab guide, code files, routing diagrams and console screenshots come from the Digital Cloud Training <em>Cloud Mastery Bootcamp</em>. The overview diagram and this documentation were written by Rutuja Naik.</p>
+</section>
+</main>
+</div>
+
+<footer>Created by Rutuja Naik. Documentation released under the MIT License.</footer>
+
+<script>
+(function(){
+  var root=document.documentElement,btn=document.getElementById('theme');
+  try{var s=localStorage.getItem('theme');if(s)root.setAttribute('data-theme',s)}catch(e){}
+  btn.addEventListener('click',function(){
+    var dark=root.getAttribute('data-theme')==='dark'||(!root.getAttribute('data-theme')&&matchMedia('(prefers-color-scheme: dark)').matches);
+    var next=dark?'light':'dark';root.setAttribute('data-theme',next);
+    try{localStorage.setItem('theme',next)}catch(e){}
+  });
+  var links=[].slice.call(document.querySelectorAll('nav.toc a'));
+  var map={};links.forEach(function(a){map[a.getAttribute('href').slice(1)]=a});
+  var targets=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1))}).filter(Boolean);
+  if('IntersectionObserver' in window){
+    var io=new IntersectionObserver(function(es){
+      es.forEach(function(e){if(e.isIntersecting){links.forEach(function(l){l.classList.remove('active')});map[e.target.id].classList.add('active')}});
+    },{rootMargin:'-10% 0px -80% 0px'});
+    targets.forEach(function(t){io.observe(t)});
+  }
+})();
+</script>
+</body>
+</html>
